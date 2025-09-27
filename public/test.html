@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CompileX API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>CompileX API Test</h1>
+    
+    <button onclick="testRunCode()">Test Code Execution</button>
+    <button onclick="testShareCode()">Test Code Sharing</button>
+    <button onclick="testEnvironment()">Test Environment Variables</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function addResult(title, data, isSuccess = true) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${isSuccess ? 'success' : 'error'}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            results.appendChild(div);
+        }
+
+        async function testRunCode() {
+            try {
+                const response = await fetch('/api/runCode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        code: 'console.log("Hello from CompileX!");',
+                        language: 'javascript'
+                    })
+                });
+                
+                const data = await response.json();
+                addResult('Code Execution Test', {
+                    status: response.status,
+                    response: data
+                }, response.ok);
+            } catch (error) {
+                addResult('Code Execution Test', {
+                    error: error.message
+                }, false);
+            }
+        }
+
+        async function testShareCode() {
+            try {
+                const response = await fetch('/api/shareCode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        code: 'console.log("Test code for sharing");',
+                        language: 'javascript',
+                        title: 'Test Share'
+                    })
+                });
+                
+                const data = await response.json();
+                addResult('Code Sharing Test', {
+                    status: response.status,
+                    response: data
+                }, response.ok);
+            } catch (error) {
+                addResult('Code Sharing Test', {
+                    error: error.message
+                }, false);
+            }
+        }
+
+        async function testEnvironment() {
+            // This will test if the functions are accessible
+            try {
+                const response = await fetch('/api/runCode', {
+                    method: 'GET'  // Should return method not allowed
+                });
+                
+                addResult('Environment Test', {
+                    message: 'Functions are accessible',
+                    status: response.status,
+                    statusText: response.statusText
+                }, true);
+            } catch (error) {
+                addResult('Environment Test', {
+                    error: error.message,
+                    message: 'Functions may not be deployed'
+                }, false);
+            }
+        }
+    </script>
+</body>
+</html>

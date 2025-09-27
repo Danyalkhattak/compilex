@@ -1,6 +1,12 @@
-import axios from 'axios'
+const axios = require('axios')
 
-export const handler = async (event, context) => {
+exports.handler = async (event, context) => {
+  console.log('runCode function called:', {
+    method: event.httpMethod,
+    headers: event.headers,
+    hasBody: !!event.body
+  })
+  
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -28,8 +34,15 @@ export const handler = async (event, context) => {
 
   try {
     const { code, language } = JSON.parse(event.body)
+    
+    console.log('Parsed request:', { 
+      language, 
+      codeLength: code?.length,
+      hasRapidApiKey: !!process.env.RAPIDAPI_KEY
+    })
 
     if (!code || !language) {
+      console.log('Missing required fields:', { hasCode: !!code, hasLanguage: !!language })
       return {
         statusCode: 400,
         headers: {
@@ -38,6 +51,20 @@ export const handler = async (event, context) => {
         body: JSON.stringify({
           success: false,
           error: 'Code and language are required'
+        })
+      }
+    }
+    
+    if (!process.env.RAPIDAPI_KEY) {
+      console.error('RAPIDAPI_KEY not found in environment variables')
+      return {
+        statusCode: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+        body: JSON.stringify({
+          success: false,
+          error: 'API configuration error'
         })
       }
     }

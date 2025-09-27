@@ -76,18 +76,26 @@ const CodeEditor = () => {
     }
 
     setIsRunning(true)
+    setError('')
+    setOutput('')
+    
+    console.log('Running code:', { language, codeLength: code.length })
+    
     try {
       const result = await runCode(code, language)
+      console.log('Code execution result:', result)
+      
       if (result.success) {
         setOutput(result.output)
         toast.success('Code executed successfully!')
       } else {
         setError(result.error)
-        toast.error('Compilation error!')
+        toast.error('Execution error!')
       }
     } catch (error) {
-      setError(`Error: ${error.message}`)
-      toast.error('Failed to execute code')
+      console.error('Code execution failed:', error)
+      setError(`Network Error: ${error.message}`)
+      toast.error('Failed to execute code - check console for details')
     } finally {
       setIsRunning(false)
     }

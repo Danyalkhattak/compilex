@@ -4,6 +4,13 @@ const API_BASE = import.meta.env.DEV ? 'http://localhost:3000' : ''
 
 // API service for code execution
 export const runCode = async (code, language) => {
+  console.log('API runCode called:', { 
+    isDev: import.meta.env.DEV, 
+    apiBase: API_BASE, 
+    language, 
+    codeLength: code.length 
+  })
+  
   try {
     // For development, use Piston API (free alternative)
     if (import.meta.env.DEV) {
@@ -85,17 +92,32 @@ export const runCode = async (code, language) => {
     }
 
     // Production API call to serverless function
+    console.log('Making production API call to:', `${API_BASE}/api/runCode`)
+    
     const response = await axios.post(`${API_BASE}/api/runCode`, {
       code,
       language
+    }, {
+      timeout: 30000, // 30 second timeout
+      headers: {
+        'Content-Type': 'application/json'
+      }
     })
 
+    console.log('Production API response:', response.data)
     return response.data
   } catch (error) {
-    console.error('API Error:', error)
+    console.error('API Error details:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url
+    })
+    
     return {
       success: false,
-      error: `Network error: ${error.message}`
+      error: error.response?.data?.error || `Network error: ${error.message}`
     }
   }
 }
@@ -146,18 +168,33 @@ export const shareCode = async (code, language) => {
     }
 
     // Production API call to serverless function
+    console.log('Making share API call to:', `${API_BASE}/api/shareCode`)
+    
     const response = await axios.post(`${API_BASE}/api/shareCode`, {
       code,
       language,
       title: `CompileX ${language} snippet`
+    }, {
+      timeout: 15000,
+      headers: {
+        'Content-Type': 'application/json'
+      }
     })
 
+    console.log('Share API response:', response.data)
     return response.data
   } catch (error) {
-    console.error('Share API Error:', error)
+    console.error('Share API Error details:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url
+    })
+    
     return {
       success: false,
-      error: `Failed to share: ${error.message}`
+      error: error.response?.data?.error || `Failed to share: ${error.message}`
     }
   }
 }

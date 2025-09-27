@@ -1,6 +1,11 @@
-import { Octokit } from '@octokit/rest'
+const { Octokit } = require('@octokit/rest')
 
-export const handler = async (event, context) => {
+exports.handler = async (event, context) => {
+  console.log('shareCode function called:', {
+    method: event.httpMethod,
+    hasGithubToken: !!process.env.GITHUB_TOKEN
+  })
+  
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
