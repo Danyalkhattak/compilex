@@ -4,7 +4,6 @@
   "description": "Serverless functions for CompileX",
   "main": "index.js",
   "dependencies": {
-    "axios": "^1.6.2",
-    "@octokit/rest": "^22.0.0"
+    "axios": "^1.6.2"
   }
 }

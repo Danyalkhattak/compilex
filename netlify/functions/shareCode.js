@@ -1,4 +1,4 @@
-const { Octokit } = require('@octokit/rest')
+const axios = require('axios')
 
 exports.handler = async (event, context) => {
   console.log('shareCode function called:', {
@@ -47,11 +47,6 @@ exports.handler = async (event, context) => {
       }
     }
 
-    // Initialize Octokit with GitHub token
-    const octokit = new Octokit({
-      auth: process.env.GITHUB_TOKEN
-    })
-
     // Get file extension
     const getExtension = (lang) => {
       const extensions = {
@@ -72,14 +67,20 @@ exports.handler = async (event, context) => {
     const filename = `main.${getExtension(language)}`
     const gistTitle = title || `CompileX ${language} snippet`
 
-    // Create GitHub Gist
-    const gistResponse = await octokit.gists.create({
+    // Create GitHub Gist using direct API call
+    const gistResponse = await axios.post('https://api.github.com/gists', {
       description: gistTitle,
       public: true,
       files: {
         [filename]: {
           content: code
         }
+      }
+    }, {
+      headers: {
+        'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'CompileX'
       }
     })
 

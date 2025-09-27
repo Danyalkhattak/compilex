@@ -86,11 +86,15 @@ exports.handler = async (event, context) => {
     const languageId = languageMap[language] || 63 // Default to JavaScript
 
     // Submit code to Judge0 API
+    console.log('Submitting to Judge0:', { languageId, codeLength: code.length })
+    
     const submissionResponse = await axios.post(
-      'https://judge0-ce.p.rapidapi.com/submissions',
+      'https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=false',
       {
         source_code: code,
-        language_id: languageId
+        language_id: languageId,
+        stdin: '',
+        expected_output: null
       },
       {
         headers: {
@@ -98,54 +102,52 @@ exports.handler = async (event, context) => {
           'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
           'Content-Type': 'application/json'
         },
-        timeout: 10000
+        timeout: 15000
       }
     )
+    
+    console.log('Judge0 submission response:', submissionResponse.data)
 
     const token = submissionResponse.data.token
 
     // Wait and get result
     let attempts = 0
     let result = null
+    const maxAttempts = 15 // Max 15 attempts (30 seconds)
     
-    while (attempts < 10) { // Max 10 attempts (10 seconds)
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds
       
-      const resultResponse = await axios.get(
-        `https://judge0-ce.p.rapidapi.com/submissions/${token}`,
-        {
-          headers: {
-            'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-            'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com'
+      try {
+        const resultResponse = await axios.get(
+          `https://judge0-ce.p.rapidapi.com/submissions/${token}?base64_encoded=false`,
+          {
+            headers: {
+              'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
+              'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com'
+            },
+            timeout: 10000
           }
+        )
+        
+        result = resultResponse.data
+        console.log(`Polling attempt ${attempts + 1}:`, { status: result.status })
+        
+        if (result.status.id > 2) { // Status > 2 means processing is done
+          break
         }
-      )
-      
-      result = resultResponse.data
-      
-      if (result.status.id > 2) { // Status > 2 means processing is done
-        break
+      } catch (pollError) {
+        console.error(`Polling error on attempt ${attempts + 1}:`, pollError.message)
+        if (attempts === maxAttempts - 1) {
+          throw pollError
+        }
       }
       
       attempts++
     }
 
     if (!result || result.status.id <= 2) {
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({
-          success: false,
-          error: 'Code execution timed out'
-        })
-      }
-    }
-
-    // Check for compilation or runtime errors
-    if (result.compile_output || result.stderr) {
-      const errorMessage = result.compile_output || result.stderr
+      console.log('Execution timed out or failed:', { result })
       return {
         statusCode: 200,
         headers: {
@@ -153,7 +155,42 @@ exports.handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: false,
-          error: errorMessage.trim()
+          error: `Code execution timed out after ${maxAttempts * 2} seconds. The code might be taking too long to execute or there might be an issue with the execution environment.`
+        })
+      }
+    }
+
+    console.log('Final result:', { 
+      statusId: result.status.id, 
+      statusDescription: result.status.description,
+      hasStdout: !!result.stdout,
+      hasStderr: !!result.stderr,
+      hasCompileOutput: !!result.compile_output
+    })
+
+    // Check for compilation or runtime errors
+    if (result.compile_output && result.compile_output.trim()) {
+      return {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+        body: JSON.stringify({
+          success: false,
+          error: `Compilation Error:\n${result.compile_output.trim()}`
+        })
+      }
+    }
+
+    if (result.stderr && result.stderr.trim()) {
+      return {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        },
+        body: JSON.stringify({
+          success: false,
+          error: `Runtime Error:\n${result.stderr.trim()}`
         })
       }
     }
