@@ -1,0 +1,16 @@
+{
+  "name": "CompileX",
+  "short_name": "CompileX",
+  "description": "Multi-language online compiler with AI suggestions",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
